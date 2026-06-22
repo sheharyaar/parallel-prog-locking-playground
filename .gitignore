@@ -1,0 +1,10 @@
+# Build artifacts — keep the main (exercise) branch source-only.
+*.o
+*-tsan
+*-asan
+
+# Compiled harness binaries, but keep their .c sources.
+test_*
+bench_*
+!test_*.c
+!bench_*.c
