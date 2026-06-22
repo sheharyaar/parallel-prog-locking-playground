@@ -364,4 +364,41 @@ README into a post and each chapter into a series section. Keep it exportable:
 - [ ] Follow-up questions posed, not answered.
 - [ ] Main README TOC row added and status set.
 - [ ] You did **not** write any of the algorithm. (§0)
-```
+
+---
+
+## 11. How this workspace uses the `/teach` skill (hybrid)
+
+This workspace was set up with the `/teach` skill, but deliberately uses only
+part of it. The reason: the skill's default loop is *teach the knowledge first
+(often via explainers), then drill it*. This project's loop is the inverse —
+**build it yourself first, struggle, derive the learning** — so the skill's
+knowledge-first machinery is adopted selectively.
+
+**Kept (they add value here):**
+
+- **`MISSION.md`** — the compass. Every "what should I build next?" traces back
+  to it. Re-read it when scoping a concept; update it if the goal shifts.
+- **`GLOSSARY.md`** — the canonical terms. Add a term **only when the human can
+  define it correctly without help**, not when it's first mentioned. Concept
+  READMEs should use glossary terms once they're in there. This doubles as
+  blog-export material.
+- **`learning-records/`** — numbered `NNNN-slug.md`, ADR-style. Write one when
+  the human *demonstrates* real understanding, discloses prior knowledge, or
+  corrects a misconception — to calibrate difficulty next session. Records
+  capture decision-grade insights and gotchas, **not** a session journal and
+  **not** anything the concept README or glossary already holds.
+
+**Declined / fenced off:**
+
+- **Implementation explainers.** Do not produce an explainer (HTML or prose)
+  that walks through *how a concept is implemented* before the human has built
+  it — that violates §0 by pre-chewing the discovery. Concept-only explainers
+  (e.g. what linearizability *means*, the C11 memory model) are fine; the line
+  is *ideas, yes; an unbuilt implementation, no*.
+- **A separate `RESOURCES.md`** — skipped for now. Reference links live in each
+  concept README's "Online resources" section. Revisit only if a central list
+  becomes worth the duplication.
+
+When the skill's instructions and this section conflict, **this section and §0
+win.** The hands-on-first pedagogy is the point of the workspace.
