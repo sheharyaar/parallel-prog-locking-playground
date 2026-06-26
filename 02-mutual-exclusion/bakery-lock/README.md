@@ -138,17 +138,83 @@ between "I typed in a lock" and "I understand the Bakery."
 
 1. **The doorway.** Why must a thread publish its intent *before* it reads
    everyone else's numbers, not after? What goes wrong if you swap the order?
+
+  - A thread waits in the waiting sectionn wile other thread has a priority (flag[\i] && (label_i, i) << (label_self, self)).
+  - So in case where there are 2 threads - A (id=n) and B (id=n+x):
+    - Thread A and B enter the doorway and start searching the maximum number.
+    - Thead A scans first and gets number say lets 23, and thread B gets number 24, but before thread A could set the flag to true, it is pre-empted.
+    - Thread A is out of the CPU, thread B is running, sets flag true and checks that thread A flag is not true, enters the critical section.
+    - Thread A comes back, finds thread B flag to be true, but finds its label smaller, enters the critical section, so now we have both threads in
+    the critical section.
+
+
 2. **Ties.** Two threads can read the current maximum at the same instant and
    pick the *same* ticket number. Why doesn't that break mutual exclusion — what
    breaks the tie between them?
+
+  - The tie is broken by the thread id.
+
 3. **Cost of fairness.** Peterson (§2.3.3) gives mutual exclusion for 2 threads.
    What does Bakery give you that "Peterson, but for n threads" wouldn't — and
    what do you pay for it, per acquire and in space?
+
+  - Peterson lock for n threads does not guarantee FCFS ordering or FIFO ordering. The cost is O(N) time and O(N) space.
+
 4. **Unbounded numbers.** Ticket numbers only ever grow. On a real machine an
    integer eventually overflows. What *specifically* breaks when a number wraps,
    and how does §2.8 sidestep it without infinite integers?
+
+  - When the label id wraps, the invariant that (label_i, i) << (label_j, j) breaks the safety - two threads can be in a critical section
+  in this case.
+
 5. **Stage 2 teaser.** If you drop one of your atomics from seq_cst to
    `memory_order_relaxed`, which guarantee of the algorithm breaks *first*?
    Predict it before you measure it.
-6. **Test design.** Why is a *non-atomic* shared counter a sharper mutual-
+
+  - The guarantee that only one thread is inside the critical section breaks. If the atomics dont have an ordering, an update by one thread
+  can be stale due to no ordering and old value can be read by another thread, breaking the invariants.
+
+1. **Test design.** Why is a *non-atomic* shared counter a sharper mutual-
    exclusion test than an atomic one?
+
+  - Non-atomic shared counter helps to identify lost updates by two threads in a critical section.
+
+## Build note: why plain arrays *and* `volatile` both lost the race
+
+The first `bakery.c` I wrote used plain `int`/`bool` arrays.
+
+The twist: **the Bakery algorithm doesn't need atomics at all.** Its whole claim to
+fame is mutual exclusion out of plain **single-writer registers** — each `flags[i]` /
+`labels[i]` is written only by thread `i` and read by everyone else. Lamport proved
+it correct even for *safe* registers, where a read that overlaps a write may return
+garbage (that's why his original carries a `choosing[]` flag).
+
+With plain arrays the **C11 memory model** broke the memory ordering. On x86 a
+naturally-aligned load/store is already atomic in hardware. But in
+C11, two threads touching a *non-`_Atomic`* object with at least one writing and no
+synchronization between them is a **data race, which is undefined behavior**.
+
+In `while (flags[i] && ...)`, the compiler proves *this* thread never writes `flags[i]`,
+hoists the load out of the loop, and the spin reads one cached value forever. So the program hung.
+
+Then I used `volatile`, and it *also* failed. `volatile` says "this location can
+change outside the program, re-read it from memory every time" which fixed the value cache, but
+not the ordering.
+
+- **no atomicity** - it makes no promise the access can't tear on wider/unaligned
+  types, and
+- **no ordering** - it emits no memory fence and establishes no happens-before
+  between threads. The CPU is still free to reorder my `flags[i] = true` after the
+  later loads of everyone else's flags (store-load reordering under x86's TSO) - and
+  that announce-before-scan ordering is exactly what the doorway depends on.
+
+`_Atomic` with the default seq_cst ordering is what actually fixed it, and it fixed
+two separate things at once:
+
+1. **Well-definedness** - the accesses stop being a data race, so the compiler stops
+   hoisting, reordering, and inventing. This is what ThreadSanitizer was yelling
+   about; a TSan race here is a *language*-level defect, not a broken proof.
+2. **Sequential consistency**.
+
+The mental model I walked away with: **the atomics aren't part of Lamport's
+algorithm**.

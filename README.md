@@ -37,7 +37,7 @@ Grouped by book chapter. Status: 🚧 wip · ✅ done · 💤 idea.
 
 | Chapter | Concept | Status | Link |
 |---|---|---|---|
-| 2 — Mutual exclusion | Lamport's Bakery algorithm | 🚧 wip | [bakery-lock](02-mutual-exclusion/bakery-lock) |
+| 2 — Mutual exclusion | Lamport's Bakery algorithm | ✅ | [bakery-lock](02-mutual-exclusion/bakery-lock) |
 
 More rows as concepts get built.
 

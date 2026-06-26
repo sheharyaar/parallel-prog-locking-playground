@@ -31,12 +31,9 @@ static void *worker(void *arg) {
     (void)tid;  /* remove once you use tid below */
 
     for (int i = 0; i < iters; i++) {
-        /* TODO (you): the critical section — the heart of this test.
-         *   - acquire the lock on behalf of `tid`
-         *   - counter++;            (plain, non-atomic)
-         *   - release the lock
-         * Keep the increment a plain `counter++`; the lock is the protection,
-         * not an atomic. */
+	    bakery_lock(lock, tid);
+	    counter++;
+	    bakery_unlock(lock, tid);
     }
     return NULL;
 }
@@ -81,7 +78,7 @@ int main(int argc, char **argv) {
 
     /* TODO (you): the invariant. What must hold for the lock to be correct?
      * Decide PASS/FAIL from `counter` and `expected`, and set `ok`. */
-    int ok = 0;  /* <- you replace this */
+    int ok = (counter == expected);
 
     bakery_destroy(lock);
     free(threads);
