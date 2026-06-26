@@ -1,5 +1,8 @@
 #include "bakery.h"
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 /*
  * ======================================================================
@@ -25,22 +28,62 @@
 
 struct bakery_lock {
     int n;
-    /* TODO (you): the state that makes this a Bakery lock. */
+    _Atomic(bool) *flags;
+    _Atomic(unsigned int) *labels;
 };
 
 bakery_lock_t *bakery_create(int n) {
-    (void)n;
-    return NULL;   /* TODO (you): allocate + initialize. */
+	bakery_lock_t *lock = malloc(sizeof(*lock));
+	if(!lock) return NULL;
+
+	lock->n = n;
+	lock->flags = calloc(n, sizeof(bool));
+	lock->labels = calloc(n, sizeof(unsigned int));
+	
+	if (!lock->flags || !lock->labels) {
+		bakery_destroy(lock);
+		return NULL;
+	}
+
+	return lock;
 }
 
 void bakery_destroy(bakery_lock_t *lock) {
-    (void)lock;    /* TODO (you): free whatever bakery_create allocated. */
+	if (!lock) return;
+
+	if(lock->flags) free((void *)lock->flags);
+	if(lock->labels) free((void *)lock->labels);
+	lock->flags = NULL;
+	lock->labels = NULL;
+	free(lock);
+}
+
+static inline bool label_comp(unsigned int label_i, int i, unsigned int label_j, int j) {
+	if (label_i == label_j) return (i<j);
+	return (label_i < label_j);
 }
 
 void bakery_lock(bakery_lock_t *lock, int tid) {
-    (void)lock; (void)tid;   /* TODO (you): doorway, then wait. */
+	if (tid >= lock->n) return;
+
+	lock->flags[tid] = true;
+	unsigned int max_label=0;
+	for (int i =0; i < lock->n; i++) {
+		if (lock->labels[i] > max_label)
+			max_label = lock->labels[i];
+	}
+
+	lock->labels[tid] = max_label + 1;
+
+	for (int i=0; i < lock->n; i++) {
+		if (i == tid) continue;
+
+		while (lock->flags[i] && label_comp(lock->labels[i], i, lock->labels[tid], tid)) {
+		};
+	}
 }
 
 void bakery_unlock(bakery_lock_t *lock, int tid) {
-    (void)lock; (void)tid;   /* TODO (you): step out of line. */
+	if (tid >= lock->n) return;
+	lock->flags[tid] = false;
 }
