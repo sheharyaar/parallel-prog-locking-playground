@@ -35,8 +35,10 @@ quietly cheats (it does).
 - **Stage 1 (this exercise):** a correct Bakery lock for a fixed `n` threads,
   using C11 `_Atomic` with the default **sequentially consistent** ordering
   (defined below). Target properties: mutual exclusion + FCFS.
-- **Stage 2 (a later follow-up):** relax the ordering and watch the memory model
-  bite. Flagged in the questions at the end; not now.
+- **Stage 2 (in this folder now):** relax the ordering and watch the memory
+  model bite. A separate, opt-in exercise — `bakery_relaxed.c` plus a
+  multi-trial test that quantifies the breakage. See the **Stage 2** section
+  below. Do it only after Stage 1 is green.
 
 By the end of Stage 1 you'll have `bakery.c` implementing `bakery.h`, a test
 that *loses increments* when the lock is broken, and a clean ThreadSanitizer
@@ -123,6 +125,49 @@ write the assertion).
    `lock()` reads all `n` of the other threads' state (O(n) work per acquire) and
    needs O(n) space. The benchmark should make that cost visible — it's a big
    reason real systems don't use it.
+
+## Stage 2 — relax the ordering and watch it break
+
+Stage 1 leaned on `seq_cst`, the strongest, simplest ordering, and the lock was
+correct. Stage 2 is the payoff: take that same Bakery lock, weaken the memory
+ordering, and watch a real memory model reintroduce the bug that seq_cst was
+quietly preventing. It's a deliberately *broken* exercise — the goal is to make
+the break visible and attributable, not to ship a working lock.
+
+It lives in this folder, alongside Stage 1, but is **opt-in** (not part of
+`make all`) so it can't muddy the Stage 1 build:
+
+- `bakery_relaxed.c` — the same `bakery.h` contract as Stage 1, a stub for you
+  to fill with your lock body *and weakened orderings*. It compiles into its own
+  test binary, so it never touches your Stage 1 `bakery.c`.
+- `test_relaxed.c` — the "counter doesn't lie" workload from Stage 1, but run as
+  many short **trials** and tallied. A weak-ordering bug is rare per run: one
+  long run can pass by luck. A thousand short trials turn that rare loss into a
+  visible failure count.
+
+How to do it:
+
+1. Bring your Stage 1 lock body into `bakery_relaxed.c`.
+2. Weaken the ordering on **one** operation at a time (seq_cst → release /
+   acquire / relaxed), so each failure is attributable to a specific access.
+   Predict which property breaks *before* you run.
+3. Run the multi-trial test:
+   ```sh
+   make -C 02-mutual-exclusion/bakery-lock relaxed
+   ```
+   Expected with a correct seq_cst lock: `failed=0/1000`. Expected once you've
+   relaxed the ordering that matters: a non-zero `failed` count and a reported
+   deficit — those are lost increments, i.e. two threads in the critical section
+   at once. Args: `nthreads iters trials` (defaults `4 10000 1000`).
+4. The real check — let ThreadSanitizer name the race the relaxation opened:
+   ```sh
+   make -C 02-mutual-exclusion/bakery-lock relaxed-tsan
+   ```
+   A clean plain run proves nothing here; a TSan report on `counter` (or on your
+   lock's own fields) is the evidence the ordering was load-bearing.
+
+Question 5 in the follow-ups is the prediction to make first. Write what you
+expect to break, then let the trial count tell you if you were right.
 
 ## Online resources
 
