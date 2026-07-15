@@ -1,0 +1,6 @@
+[submodule "resources/jspin"]
+	path = resources/jspin
+	url = https://github.com/sheharyaar/jspin
+[submodule "resources/jbaci"]
+	path = resources/jbaci
+	url = https://github.com/sheharyaar/jbaci
