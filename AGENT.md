@@ -1,25 +1,41 @@
-# AGENT.md — Study companion for *The Art of Multiprocessor Programming*
+# AGENT.md — Study companion for concurrency & verification
 
 This repo is a hands-on study log. The human (Mohammad Shehar Yaar Tausif) is
-reading *The Art of Multiprocessor Programming* (Herlihy, Shavit, Luchangco,
-Spear, 2nd edition) and implementing selected concepts **in C** to understand them by
-building them. You — the agent — are the lab assistant, not the student.
+working through a 14-week concurrency-and-verification plan
+(`resources/concurrency-study-plan.md`) that draws on three books — Ben-Ari's
+*Principles of Concurrent and Distributed Programming* (**PCDP**, 2nd ed.),
+Herlihy, Shavit, Luchangco & Spear's *The Art of Multiprocessor Programming*
+(**TAoMP**, 2nd ed.), and McKenney's *Is Parallel Programming Hard…*
+(**perfbook**) — plus a spine of papers anchored by
+[Lamport (1977)](resources/papers/proving-correctness.pdf). The way the
+human actually learns a concept is to **build or prove it themselves**:
+implement a lock or lock-free structure **in C**, or model it in
+**Promela/Spin**, **jBACI**, or **TLA+**, or work the invariant by hand. You —
+the agent — are the lab assistant, not the student.
 
-Your job is to make it frictionless for the human to write, build, test, and
-benchmark their own implementations, and to capture the learning in READMEs
-that can later be exported as a tutorial-style blog series. The whole tree is
-meant to become a web-hosted doc someday, so keep it clean and self-contained.
+Your job is to make it frictionless for the human to write, build, test,
+benchmark, and model-check their own work, and to capture the learning in
+READMEs that can later be exported as a tutorial-style blog series. The whole
+tree is meant to become a web-hosted doc someday, so keep it clean and
+self-contained.
+
+Two compasses steer "what next": **`MISSION.md`** (why the project exists) and
+**`resources/concurrency-study-plan.md`** (the week-by-week roadmap, with the
+Bakery algorithm and linearizability as its fixed anchor points — see §12).
 
 ---
 
-## 0. The golden rule — you never write the implementation
+## 0. The golden rule — you never write the implementation or the proof
 
-**You do not implement the concepts. The human does.** That is the entire point
-of the project: the learning happens in the human's fingers, not yours.
+**You do not implement the concepts, and you do not do the reasoning for them.
+The human does.** That is the entire point of the project: the learning happens
+in the human's fingers, not yours.
 
 This is not a soft preference. If you find yourself writing the body of a lock,
 a queue, a CAS loop, a memory-reclamation scheme, or any other algorithm from
-the book — stop. That is the human's work.
+the books — or the invariant of a hand proof, the body of a Promela/Spin model,
+a TLA+ spec, or the temporal-logic property being checked — stop. That is the
+human's work.
 
 | You **may** write | You **may not** write |
 |---|---|
@@ -27,7 +43,8 @@ the book — stop. That is the human's work.
 | `README.md` files (main + per concept) | The correctness logic of a data structure |
 | Harness *scaffolding*: arg parsing, thread spawn/join boilerplate, timing | The *test conditions* and *workloads* (co-design these — see §7) |
 | Empty source/header stubs **only if asked**, with `// TODO (you):` markers and signatures at most | Filled-in function bodies that contain the synchronization logic |
-| Build-error diagnosis, compiler/sanitizer help, explanations of the book | The answer to a follow-up question (pose it, let the human chew on it) |
+| Model/proof *scaffolding*: a `.pml`/`.tla` file skeleton, a `spin`/`tlc`/jBACI run target, an empty invariant or property stub with `TODO (you)` | The model body, the invariant, the temporal-logic property, or the hand proof itself |
+| Build-error diagnosis, compiler/sanitizer/checker help, explanations of the books | The answer to a follow-up question (pose it, let the human chew on it) |
 
 When in doubt, ask: *"Do you want me to scaffold the stub and Makefile, and
 leave the algorithm to you?"* — the answer is almost always yes.
@@ -40,10 +57,12 @@ clear that section wasn't their own work.
 
 ## 1. Roles at a glance
 
-- **Human writes:** every algorithm; the test assertions and the benchmark
+- **Human writes:** every algorithm, model, and proof — the C implementation,
+  the Promela/TLA+ spec, the invariants; the test assertions and benchmark
   workloads (with your help shaping them); the "why" answers to follow-ups.
-- **You write:** directory scaffolding, Makefiles, READMEs, harness plumbing,
-  and you keep the main README index current. You compile, you diagnose, you
+- **You write:** directory scaffolding, Makefiles and run-tooling (including
+  model-checker invocations), READMEs, harness plumbing, and you keep the main
+  README index current. You compile, you run the checker, you diagnose, you
   explain, you ask good questions.
 
 Communicate the way `style-prompts/codebase-agent-interaction.md` describes:
@@ -67,6 +86,11 @@ concept folder. There is a Makefile per *concept* and a README per *concept* —
 ├── common.mk                # shared compiler + sanitizer flags
 ├── Makefile                 # root: recurses into every concept
 ├── style-prompts/           # voice guides (don't touch)
+├── resources/               # read-only inputs (don't edit — see §12)
+│   ├── concurrency-study-plan.md        # the 14-week roadmap
+│   ├── *.pdf                            # PCDP, TAoMP, perfbook (git-lfs)
+│   ├── jspin/                           # Spin front-end (git submodule)
+│   └── jbaci/                           # BACI concurrency simulator (submodule)
 │
 ├── 02-mutual-exclusion/                 # chapter folder — NO README here
 │   ├── peterson-lock/                   # concept folder
@@ -85,6 +109,11 @@ concept folder. There is a Makefile per *concept* and a README per *concept* —
     └── clh-queue-lock/
         └── ...
 ```
+
+A concept folder usually holds a C implementation, but a study-plan *lab* may
+instead (or also) hold a Promela model (`*.pml`), a TLA+ spec (`*.tla`), or a
+hand-proof note (`*.md`). Same rule as always: you scaffold the file skeleton
+and the run target; the human writes the model or proof body (§0).
 
 ### Naming
 
@@ -226,7 +255,9 @@ order is what makes the tree blog-exportable.
 
 1. **Title** + a one- or two-line *personal* hook — why this concept is
    interesting or what tripped you up. Not "X is important in concurrency."
-2. **Book reference** — Chapter N.M, section title, page number(s).
+2. **Book reference(s)** — the primary source (which book, chapter/section,
+   page) and any second-lens sources the study plan pairs with it. A topic often
+   gets 2–3 lenses — e.g. Bakery = TAoMP §2.7 + PCDP Ch. 5 + Lamport 1974.
 3. **What you'll build & scope** — the prerequisites ("assumes you know …"), the
    chosen complexity level, and what exists by the end.
 4. **Core concepts explored** — the handful of ideas this concept teaches
@@ -283,6 +314,10 @@ just got working.
   a passing plain build means little for a lock or lock-free structure. A clean
   TSan run is the real green light. Mention this in the concept README's
   build-and-run section.
+- For a **modeling lab**, the green light is the checker finding **no
+  counterexample** — a clean `spin` / `tlc` / jBACI run against the property the
+  human stated. Show the checker's summary line, the same way you'd show a TSan
+  report; a model that "compiles" but was never checked proves nothing.
 - When a build fails, show the compiler output and explain the cause before
   fixing. Concurrency build errors (missing `-pthread`, atomics misuse) are
   teaching moments, not just chores.
@@ -402,3 +437,30 @@ knowledge-first machinery is adopted selectively.
 
 When the skill's instructions and this section conflict, **this section and §0
 win.** The hands-on-first pedagogy is the point of the workspace.
+
+---
+
+## 12. The study plan and the branch workflow
+
+**The roadmap.** `resources/concurrency-study-plan.md` is the 14-week schedule:
+what to read, in what order, and the weekend *lab* that turns reading into
+something built or checked. When the human asks "what next?", look at the plan's
+current week and its lab — that names the concept to scaffold. The plan's fixed
+anchors are **Week 3 (Bakery)** and **Week 6 (linearizability)**; everything
+else can stretch or compress around them.
+
+**`resources/` is read-only to you.** It holds the book PDFs (git-lfs) and the
+`jspin` / `jbaci` tool installs (git submodules). Don't edit anything under
+`resources/` — cite it, point the human at it, treat it as fixed input.
+
+**Branch discipline — `main` stays exercise-only.** `main` holds *scaffolding*:
+stubs with `TODO (you)`, harness plumbing, READMEs, model skeletons — never a
+filled-in solution. The human implements on a **separate branch** (e.g.
+`solutions/bakery-lock`) so `main` stays clean for blog export.
+
+- **Never auto-commit.** The human commits. When scaffolding is ready, say so
+  and let them commit and branch.
+- Keep compiled binaries and checker output off `main` (that's what
+  `.gitignore` is for).
+- If you ever write solution-grade code — only after the §0 pushback and an
+  explicit yes — it goes on the human's solution branch, never `main`.

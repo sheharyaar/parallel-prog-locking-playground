@@ -12,15 +12,30 @@ This is a **deep dive**. The goal isn't just a lock that works — it's to come
 out understanding *why* it gives first-come-first-served fairness and where it
 quietly cheats (it does).
 
-## Where this is in the book
+This is **Week 3** of the [study plan](../../resources/concurrency-study-plan.md)
+— the "Bakery week" where three books and the anchor paper converge on the same
+algorithm. Read them in this order:
 
-- **TAoMP, 2nd ed. — §2.7 "Lamport's Bakery algorithm", p.34.** The algorithm
-  itself.
-- **§2.8 "Bounded timestamps", p.35** — picks up the loose end Bakery leaves
-  (its ticket numbers grow without bound). Read it after, not before.
-- Background from earlier in the chapter you'll lean on: **§2.1 critical
-  sections**, **§2.6 fairness**, and the two-thread Peterson lock (§2.3.3) for
-  contrast.
+- **Lamport (1974), "A New Solution of Dijkstra's Concurrent Programming
+  Problem"** — the original, with the informal proof. *Read this first*, before
+  any textbook treatment.
+- **TAoMP, 2nd ed. — §2.6 fairness, §2.7 "Lamport's Bakery algorithm", p.34.**
+  The textbook version and the one this exercise implements.
+- **PCDP (Ben-Ari), Ch. 5** — the N-process bakery, weaker memory models, and
+  faster variants. A second lens on the same idea.
+- **§2.8 "Bounded timestamps", p.35 (TAoMP)** — picks up the loose end Bakery
+  leaves (its ticket numbers grow without bound). Read it after, not before.
+- **[Lamport (1977), "Proving the Correctness of Multiprocess Programs"](../../resources/papers/proving-correctness.pdf)
+  — safety half** — the formalism behind *why* it's correct. The plan pairs this
+  with the build; you don't need it to write the code, but it's where the "why"
+  lives.
+- **[Lamport (1979), "A New Approach to Proving the Correctness of Multiprocess
+  Programs"](../../resources/papers/proving-correctness-new-apporach.pdf)** —
+  Lamport's own follow-up that proves an *improved bakery* correct **without**
+  assuming atomic reads and writes. Squarely on point for the Stage 1 → Stage 2
+  memory-ordering question below; save it for when seq_cst comes off.
+- Background you'll lean on: **§2.1 critical sections** and the two-thread
+  Peterson lock (§2.3.3) for contrast.
 
 ## What you'll build & scope
 
